@@ -9,14 +9,22 @@ import (
 	elasticsearch "github.com/elastic/go-elasticsearch/v8"
 )
 
+type elasticServiceConfig struct {
+	username   string
+	password   string
+	address    string
+	cacertPath string
+}
+
 type ElasticService struct {
 	client *elasticsearch.Client
 }
 
 func NewService() *ElasticService {
 	service := ElasticService{}
+	config := loadConfig()
 
-	cacertFile, readFileErr := os.ReadFile("CHANGE_ME")
+	cacertFile, readFileErr := os.ReadFile(config.cacertPath)
 
 	if readFileErr != nil {
 		logger.Log(readFileErr)
@@ -26,10 +34,10 @@ func NewService() *ElasticService {
 
 	configuration := elasticsearch.Config{
 		Addresses: []string{
-			"https://localhost:9200",
+			config.address,
 		},
-		Username: "elastic",
-		Password: "CHANGE_ME",
+		Username: config.username,
+		Password: config.password,
 		CACert:   cacertFile,
 	}
 
@@ -57,4 +65,13 @@ func (service *ElasticService) Status() {
 	}
 
 	logger.Log(buffer.String())
+}
+
+func loadConfig() elasticServiceConfig {
+	return elasticServiceConfig{
+		username:   os.Getenv("ELASTICSEARCH_USERNAME"),
+		password:   os.Getenv("ELASTICSEARCH_PASSWORD"),
+		address:    os.Getenv("ELASTICSEARCH_ADDRESS"),
+		cacertPath: os.Getenv("ELASTICSEARCH_CACERT_PATH"),
+	}
 }

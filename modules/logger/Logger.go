@@ -22,3 +22,9 @@ func Log(values ...any) {
 
 	logger.Println(values...)
 }
+
+func Fatal(values ...any) {
+	logger := getLogger()
+
+	logger.Fatal(values...)
+}

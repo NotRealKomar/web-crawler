@@ -1,1 +1,2 @@
-static/http_ca.crt
+.env*
+!.env.dist

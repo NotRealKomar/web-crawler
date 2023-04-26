@@ -1,13 +1,21 @@
 package main
 
-// "web-crawler/modules/elastic"
-// "web-crawler/http"
-// "web-crawler/parser"
+import (
+	"web-crawler/modules/elastic"
+	"web-crawler/modules/logger"
+
+	"github.com/joho/godotenv"
+)
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	// parserService := parser.ParserService{}
 	// httpClientService := http.HttpClientService{}
-	// elasticService := elastic.NewService()
+	elasticService := elastic.NewService()
 
 	// url, _ := url.Parse("https://go.dev/doc/tutorial/handle-errors")
 
@@ -18,5 +26,5 @@ func main() {
 	// 	fmt.Println(value)
 	// }
 
-	// elasticService.Status()
+	elasticService.Status()
 }
