@@ -34,7 +34,7 @@ func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 		return nil, marshalErr
 	}
 
-	response, searchErr := client.Search(
+	response, searchErr := search(
 		search.WithContext(context.Background()),
 		search.WithIndex(INDEX_NAME),
 		search.WithBody(bytes.NewReader(body)),
@@ -74,4 +74,48 @@ func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 	}
 
 	return output, nil
+}
+
+func (*ContentRepository) Save(document documents.ContentDocument) (*documents.ContentDocument, error) {
+	client, _ := client.GetClient()
+	create := client.Create
+
+	body, marshalErr := json.Marshal(document)
+	if marshalErr != nil {
+		return nil, marshalErr
+	}
+
+	response, clientErr := create(
+		INDEX_NAME,
+		document.Id,
+		bytes.NewReader(body),
+		create.WithContext(context.Background()),
+		create.WithPretty(),
+	)
+	if clientErr != nil {
+		return nil, clientErr
+	}
+	defer response.Body.Close()
+
+	if response.IsError() {
+		logger.Log(*response)
+
+		return nil, errors.New(repositoryErrors.CreateFailedException)
+	}
+
+	buffer := new(bytes.Buffer)
+	_, copyErr := io.Copy(buffer, response.Body)
+
+	if copyErr != nil {
+		return nil, copyErr
+	}
+
+	responseData := &types.CreateResponse{}
+	json.Unmarshal(buffer.Bytes(), responseData)
+
+	if responseData.Result == "updated" {
+		logger.Log("unexpected result for 'create' request with id", responseData.Id)
+	}
+
+	return &document, nil
 }

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/client"
 	"web-crawler/modules/elastic/repositories"
 	"web-crawler/modules/logger"
@@ -37,7 +40,9 @@ func main() {
 	router.HandleFunc("/", notFound).Methods(http.MethodGet)
 	router.HandleFunc("/healthcheck", healthcheck).Methods(http.MethodGet)
 	router.HandleFunc("/status", status).Methods(http.MethodGet)
+
 	router.HandleFunc("/content", getItemsRoute(repository)).Methods(http.MethodGet)
+	router.HandleFunc("/content/new", getSaveRoute(repository)).Methods(http.MethodPost)
 
 	http.ListenAndServe(":3000", logger.NewLogMiddleware(router))
 }
@@ -74,5 +79,36 @@ func getItemsRoute(repository *repositories.ContentRepository) func(http.Respons
 		}
 
 		w.Write(output)
+	}
+}
+
+func getSaveRoute(repository *repositories.ContentRepository) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		buffer := new(bytes.Buffer)
+		io.Copy(buffer, r.Body)
+
+		document := documents.NewContentDocument()
+
+		unmarshalErr := json.Unmarshal(buffer.Bytes(), document)
+		if unmarshalErr != nil {
+			w.Write([]byte(unmarshalErr.Error()))
+			return
+		}
+
+		newDocument, saveErr := repository.Save(*document)
+		if saveErr != nil {
+			w.Write([]byte(saveErr.Error()))
+			return
+		}
+
+		response, marshalErr := json.Marshal(newDocument)
+		if marshalErr != nil {
+			w.Write([]byte(marshalErr.Error()))
+			return
+		}
+
+		w.Write(response)
 	}
 }

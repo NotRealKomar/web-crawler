@@ -7,7 +7,7 @@ type LogMiddleware struct {
 }
 
 func (middleware *LogMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	Log("Incoming request on", r.URL.Path)
+	Log("Incoming", r.Method, "request on", r.URL.Path)
 
 	middleware.handler.ServeHTTP(w, r)
 }
