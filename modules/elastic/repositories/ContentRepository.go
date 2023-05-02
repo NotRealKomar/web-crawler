@@ -6,25 +6,29 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/client"
+	repositoryErrors "web-crawler/modules/elastic/repositories/errors"
+	"web-crawler/modules/elastic/repositories/types"
 	"web-crawler/modules/logger"
 )
 
 type ContentRepository struct{}
-type queryObject map[string]any
 
-func (*ContentRepository) FindMany() ([]documents.ContentDocument, error) {
+const INDEX_NAME = "content"
+
+func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 	client, _ := client.GetClient()
 	search := client.Search
 
-	query := queryObject{
-		"query": queryObject{
-			"match_all": queryObject{},
+	body, marshalErr := json.Marshal(
+		types.QueryObject{
+			"query": types.QueryObject{
+				"match_all": types.QueryObject{},
+			},
 		},
-	}
-
-	data, marshalErr := json.Marshal(query)
+	)
 
 	if marshalErr != nil {
 		return nil, marshalErr
@@ -32,8 +36,8 @@ func (*ContentRepository) FindMany() ([]documents.ContentDocument, error) {
 
 	response, searchErr := client.Search(
 		search.WithContext(context.Background()),
-		search.WithIndex("content"),
-		search.WithBody(bytes.NewReader(data)),
+		search.WithIndex(INDEX_NAME),
+		search.WithBody(bytes.NewReader(body)),
 		search.WithTrackTotalHits(true),
 		search.WithPretty(),
 	)
@@ -46,7 +50,7 @@ func (*ContentRepository) FindMany() ([]documents.ContentDocument, error) {
 	if response.IsError() {
 		logger.Log(response)
 
-		return nil, errors.New("something went wrong with search request")
+		return nil, errors.New(repositoryErrors.SearchFailedException)
 	}
 
 	buffer := new(bytes.Buffer)
@@ -56,7 +60,18 @@ func (*ContentRepository) FindMany() ([]documents.ContentDocument, error) {
 		return nil, copyErr
 	}
 
-	logger.Log(buffer.String())
+	responseData := &types.SearchResponse[documents.ContentDocument]{}
+	json.Unmarshal(buffer.Bytes(), responseData)
 
-	return []documents.ContentDocument{}, nil
+	if responseData.Hits.Hits == nil {
+		return nil, errors.New(repositoryErrors.NoDocumentsException)
+	}
+
+	output := []documents.ContentDocument{}
+
+	for _, document := range responseData.Hits.Hits {
+		output = append(output, document.Source)
+	}
+
+	return output, nil
 }

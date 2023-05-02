@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/client"
-	"web-crawler/modules/logger"
 )
 
 type ContentIndexer struct{}
@@ -29,8 +28,6 @@ func (*ContentIndexer) IndexFromDocument(document documents.ContentDocument) (*d
 		return nil, indexErr
 	}
 	defer response.Body.Close()
-
-	logger.Log(response)
 
 	return &document, nil
 }

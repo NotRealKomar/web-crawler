@@ -8,6 +8,7 @@ import (
 
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
@@ -31,14 +32,14 @@ func main() {
 	// 	fmt.Println(value)
 	// }
 
-	mux := http.NewServeMux()
+	router := mux.NewRouter()
 
-	mux.HandleFunc("/", notFound)
-	mux.HandleFunc("/healthcheck", healthcheck)
-	mux.HandleFunc("/status", status)
-	mux.HandleFunc("/content", getItemsRoute(repository))
+	router.HandleFunc("/", notFound).Methods(http.MethodGet)
+	router.HandleFunc("/healthcheck", healthcheck).Methods(http.MethodGet)
+	router.HandleFunc("/status", status).Methods(http.MethodGet)
+	router.HandleFunc("/content", getItemsRoute(repository)).Methods(http.MethodGet)
 
-	http.ListenAndServe(":3000", logger.NewLogMiddleware(mux))
+	http.ListenAndServe(":3000", logger.NewLogMiddleware(router))
 }
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +61,7 @@ func status(w http.ResponseWriter, r *http.Request) {
 
 func getItemsRoute(repository *repositories.ContentRepository) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		documents, findManyErr := repository.FindMany()
+		documents, findManyErr := repository.GetMany()
 		if findManyErr != nil {
 			w.Write([]byte(findManyErr.Error()))
 			return

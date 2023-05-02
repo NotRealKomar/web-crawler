@@ -4,7 +4,9 @@ import (
 	"errors"
 	"io"
 	"strings"
+
 	"web-crawler/modules/logger"
+	parserErrors "web-crawler/modules/parser/errors"
 
 	"golang.org/x/net/html"
 )
@@ -31,9 +33,9 @@ func (*ParserService) Parse(reader ParseInputReader) (output *ParseData, parseEr
 				break
 			}
 
-			logger.Log(ErrorTokenException, tokenType)
+			logger.Log(parserErrors.ErrorTokenException, tokenType)
 
-			return nil, errors.New(ErrorTokenException)
+			return nil, errors.New(parserErrors.ErrorTokenException)
 		}
 
 		if tokenType == html.TextToken {
