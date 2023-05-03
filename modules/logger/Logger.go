@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-const LOG_PREFIX = "[CRAWLER]:"
+const LOG_PREFIX = "[CRAWLER]: "
 
 var logger *log.Logger
 
