@@ -44,6 +44,8 @@ func main() {
 	router.HandleFunc("/content", getItemsRoute(repository)).Methods(http.MethodGet)
 	router.HandleFunc("/content/new", getSaveRoute(repository)).Methods(http.MethodPost)
 
+	logger.Log("Run the server on http://localhost:3000/")
+
 	http.ListenAndServe(":3000", logger.NewLogMiddleware(router))
 }
 

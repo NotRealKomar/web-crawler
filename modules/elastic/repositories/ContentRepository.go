@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/client"
 	repositoryErrors "web-crawler/modules/elastic/repositories/errors"
 	"web-crawler/modules/elastic/repositories/types"
+	"web-crawler/modules/helpers"
 	"web-crawler/modules/logger"
 )
 
@@ -21,6 +21,7 @@ const INDEX_NAME = "content"
 func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 	client, _ := client.GetClient()
 	search := client.Search
+	responseData := &types.SearchResponse[documents.ContentDocument]{}
 
 	body, marshalErr := json.Marshal(
 		types.QueryObject{
@@ -45,7 +46,6 @@ func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 	if searchErr != nil {
 		return nil, searchErr
 	}
-	defer response.Body.Close()
 
 	if response.IsError() {
 		logger.Log(response)
@@ -53,15 +53,10 @@ func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 		return nil, errors.New(repositoryErrors.SearchFailedException)
 	}
 
-	buffer := new(bytes.Buffer)
-	_, copyErr := io.Copy(buffer, response.Body)
-
-	if copyErr != nil {
-		return nil, copyErr
+	decodeErr := helpers.DecodeResponseBody(responseData, response.Body)
+	if decodeErr != nil {
+		return nil, decodeErr
 	}
-
-	responseData := &types.SearchResponse[documents.ContentDocument]{}
-	json.Unmarshal(buffer.Bytes(), responseData)
 
 	if responseData.Hits.Hits == nil {
 		return nil, errors.New(repositoryErrors.NoDocumentsException)
@@ -79,6 +74,7 @@ func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 func (*ContentRepository) Save(document documents.ContentDocument) (*documents.ContentDocument, error) {
 	client, _ := client.GetClient()
 	create := client.Create
+	responseData := &types.CreateResponse{}
 
 	body, marshalErr := json.Marshal(document)
 	if marshalErr != nil {
@@ -95,7 +91,6 @@ func (*ContentRepository) Save(document documents.ContentDocument) (*documents.C
 	if clientErr != nil {
 		return nil, clientErr
 	}
-	defer response.Body.Close()
 
 	if response.IsError() {
 		logger.Log(*response)
@@ -103,15 +98,10 @@ func (*ContentRepository) Save(document documents.ContentDocument) (*documents.C
 		return nil, errors.New(repositoryErrors.CreateFailedException)
 	}
 
-	buffer := new(bytes.Buffer)
-	_, copyErr := io.Copy(buffer, response.Body)
-
-	if copyErr != nil {
-		return nil, copyErr
+	decodeErr := helpers.DecodeResponseBody(responseData, response.Body)
+	if decodeErr != nil {
+		return nil, decodeErr
 	}
-
-	responseData := &types.CreateResponse{}
-	json.Unmarshal(buffer.Bytes(), responseData)
 
 	if responseData.Result == "updated" {
 		logger.Log("unexpected result for 'create' request with id", responseData.Id)
