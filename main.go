@@ -4,12 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+
+	"web-crawler/modules/crawler"
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/client"
 	"web-crawler/modules/elastic/repositories"
+	httpModule "web-crawler/modules/http"
 	"web-crawler/modules/logger"
+	"web-crawler/modules/parser"
 
 	"net/http"
+	"net/url"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -22,18 +27,11 @@ func main() {
 	}
 
 	repository := &repositories.ContentRepository{}
-
-	// parserService := parser.ParserService{}
-	// httpClientService := http.HttpClientService{}
-
-	// url, _ := url.Parse("https://go.dev/doc/tutorial/handle-errors")
-
-	// reader, _ := httpClientService.Get(url)
-	// data, _ := parserService.Parse(*reader)
-
-	// for _, value := range data.Data {
-	// 	fmt.Println(value)
-	// }
+	crawler := crawler.NewCrawlerService(
+		*repository,
+		httpModule.HttpClientService{},
+		parser.ParserService{},
+	)
 
 	router := mux.NewRouter()
 
@@ -43,6 +41,8 @@ func main() {
 
 	router.HandleFunc("/content", getItemsRoute(repository)).Methods(http.MethodGet)
 	router.HandleFunc("/content/new", getSaveRoute(repository)).Methods(http.MethodPost)
+
+	router.HandleFunc("/crawler/test", getCrawlRoute(crawler)).Methods(http.MethodPost)
 
 	logger.Log("Run the server on http://localhost:3000/")
 
@@ -64,6 +64,40 @@ func status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte(response))
+}
+
+func getCrawlRoute(service *crawler.CrawlerService) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		buffer := new(bytes.Buffer)
+		io.Copy(buffer, r.Body)
+
+		var body map[string]string
+		unmarshalErr := json.Unmarshal(buffer.Bytes(), &body)
+		if unmarshalErr != nil {
+			w.Write([]byte(unmarshalErr.Error()))
+			return
+		}
+
+		requestUrl := body["url"]
+		if requestUrl == "" {
+			w.Write([]byte("No URL provided\n"))
+		}
+
+		crawlUrl, parseRequestUriErr := url.ParseRequestURI(requestUrl)
+		if parseRequestUriErr != nil {
+			w.Write([]byte(parseRequestUriErr.Error()))
+		}
+
+		crawlErr := service.InitializeCrawl(crawlUrl)
+		if crawlErr != nil {
+			w.Write([]byte(crawlErr.Error()))
+		}
+
+		logger.Log("Crawl process finished")
+		w.Write([]byte("Crawl process finished\n"))
+	}
 }
 
 func getItemsRoute(repository *repositories.ContentRepository) func(http.ResponseWriter, *http.Request) {
