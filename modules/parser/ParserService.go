@@ -22,6 +22,8 @@ const (
 	HTML_HEADER_TAG            = "h1"
 
 	REGEX_NEWLINE_EXPRESSION = "(?m)\n {1,}"
+
+	HTTPS_PROTOCOL = "https"
 )
 
 type ParseData struct {
@@ -64,7 +66,7 @@ func (*ParserService) Parse(reader ParseInputReader) (*ParseData, error) {
 
 					url, err := url.ParseRequestURI(link)
 
-					if err == nil && url.IsAbs() {
+					if err == nil && url.IsAbs() && url.Scheme == HTTPS_PROTOCOL {
 						output.Links = append(output.Links, *url)
 					}
 				}

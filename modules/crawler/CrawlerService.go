@@ -38,12 +38,12 @@ func (service *CrawlerService) InitializeCrawl(url *url.URL) error {
 func (service *CrawlerService) crawl(url *url.URL, linkCount int, depth int) error {
 	logger.Log("Start crawling on depth", depth, "in", url.String())
 
-	if depth >= MAX_LINK_COUNT {
+	if depth > MAX_LINK_COUNT {
 		logger.Log("Link count", linkCount, "in depth", depth, "exceeded max link count in", url.String())
 		return nil
 	}
 
-	if depth >= MAX_DEPTH {
+	if depth > MAX_DEPTH {
 		logger.Log("Depth", depth, "exceeded max depth in", url.String())
 		return nil
 	}
@@ -67,7 +67,7 @@ func (service *CrawlerService) crawl(url *url.URL, linkCount int, depth int) err
 	depth += 1
 
 	for idx, link := range parseData.Links {
-		if idx < MAX_LINK_COUNT && depth < MAX_DEPTH {
+		if idx <= MAX_LINK_COUNT && depth <= MAX_DEPTH {
 			crawlErr := service.crawl(&link, idx, depth)
 			if crawlErr != nil {
 				return crawlErr
