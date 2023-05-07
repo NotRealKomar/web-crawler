@@ -14,6 +14,10 @@ func Register[T any](value T) {
 
 	key := reflect.TypeOf(value)
 
+	if key.Kind() != reflect.Pointer {
+		logger.Fatal("Cannot register dependency. Type \"", key, "\" must be a pointer type")
+	}
+
 	dependencies[key] = value
 }
 
