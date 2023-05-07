@@ -12,17 +12,14 @@ import (
 	"web-crawler/modules/elastic/repositories/types"
 	"web-crawler/modules/helpers"
 	"web-crawler/modules/logger"
+	generalTypes "web-crawler/modules/types"
 )
 
 type ContentRepository struct{}
 
 const INDEX_NAME = "content"
 
-func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
-	client, _ := client.GetClient()
-	search := client.Search
-	responseData := &types.SearchResponse[documents.ContentDocument]{}
-
+func (repository *ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 	body, marshalErr := json.Marshal(
 		types.QueryObject{
 			"query": types.QueryObject{
@@ -30,45 +27,35 @@ func (*ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 			},
 		},
 	)
-
 	if marshalErr != nil {
 		return nil, marshalErr
 	}
 
-	response, searchErr := search(
-		search.WithContext(context.Background()),
-		search.WithIndex(INDEX_NAME),
-		search.WithBody(bytes.NewReader(body)),
-		search.WithTrackTotalHits(true),
-		search.WithPretty(),
+	return repository.getManyByQuery(body)
+}
+
+func (repository *ContentRepository) GetManyByKeyword(
+	search string,
+	pagination *generalTypes.PaginationOptions,
+) ([]documents.ContentDocument, error) {
+	body, marshalErr := json.Marshal(
+		types.QueryObject{
+			"size": pagination.Items,
+			"from": pagination.Items * pagination.Page,
+			"query": types.QueryObject{
+				"wildcard": types.QueryObject{
+					"data": types.QueryObject{
+						"value": "*" + search + "*",
+					},
+				},
+			},
+		},
 	)
-
-	if searchErr != nil {
-		return nil, searchErr
+	if marshalErr != nil {
+		return nil, marshalErr
 	}
 
-	if response.IsError() {
-		logger.Log(response)
-
-		return nil, errors.New(repositoryErrors.SearchFailedException)
-	}
-
-	decodeErr := helpers.DecodeResponseBody(responseData, response.Body)
-	if decodeErr != nil {
-		return nil, decodeErr
-	}
-
-	if responseData.Hits.Hits == nil {
-		return nil, errors.New(repositoryErrors.NoDocumentsException)
-	}
-
-	output := []documents.ContentDocument{}
-
-	for _, document := range responseData.Hits.Hits {
-		output = append(output, document.Source)
-	}
-
-	return output, nil
+	return repository.getManyByQuery(body)
 }
 
 func (*ContentRepository) Save(document documents.ContentDocument) (*documents.ContentDocument, error) {
@@ -108,4 +95,45 @@ func (*ContentRepository) Save(document documents.ContentDocument) (*documents.C
 	}
 
 	return &document, nil
+}
+
+func (*ContentRepository) getManyByQuery(query []byte) ([]documents.ContentDocument, error) {
+	client, _ := client.GetClient()
+	search := client.Search
+	responseData := &types.SearchResponse[documents.ContentDocument]{}
+
+	response, searchErr := search(
+		search.WithContext(context.Background()),
+		search.WithIndex(INDEX_NAME),
+		search.WithBody(bytes.NewReader(query)),
+		search.WithTrackTotalHits(true),
+		search.WithPretty(),
+	)
+
+	if searchErr != nil {
+		return nil, searchErr
+	}
+
+	if response.IsError() {
+		logger.Log(response)
+
+		return nil, errors.New(repositoryErrors.SearchFailedException)
+	}
+
+	decodeErr := helpers.DecodeResponseBody(responseData, response.Body)
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
+
+	if responseData.Hits.Hits == nil {
+		return nil, errors.New(repositoryErrors.NoDocumentsException)
+	}
+
+	output := []documents.ContentDocument{}
+
+	for _, document := range responseData.Hits.Hits {
+		output = append(output, document.Source)
+	}
+
+	return output, nil
 }
