@@ -8,6 +8,8 @@ import (
 	"web-crawler/modules/http"
 	"web-crawler/modules/logger"
 	"web-crawler/modules/parser"
+
+	"golang.org/x/exp/slices"
 )
 
 const MAX_DEPTH = 3
@@ -31,24 +33,29 @@ func NewCrawlerService(
 	}
 }
 
-func (service *CrawlerService) InitializeCrawl(url *url.URL) error {
-	return service.crawl(url, 0, 0)
+func (service *CrawlerService) InitializeCrawl(link *url.URL) error {
+	processedLinks := []url.URL{}
+
+	crawlErr := service.crawl(link, &processedLinks, 0, 0)
+
+	logger.Log("Crawl process finished, processed", len(processedLinks), "links")
+	return crawlErr
 }
 
-func (service *CrawlerService) crawl(url *url.URL, linkCount int, depth int) error {
-	logger.Log("Start crawling on depth", depth, "in", url.String())
+func (service *CrawlerService) crawl(link *url.URL, processedLinks *[]url.URL, linkCount int, depth int) error {
+	logger.Log("Start crawling on depth", depth, "in", link.String())
 
 	if depth > MAX_LINK_COUNT {
-		logger.Log("Link count", linkCount, "in depth", depth, "exceeded max link count in", url.String())
+		logger.Log("Link count", linkCount, "in depth", depth, "exceeded max link count in", link.String())
 		return nil
 	}
 
 	if depth > MAX_DEPTH {
-		logger.Log("Depth", depth, "exceeded max depth in", url.String())
+		logger.Log("Depth", depth, "exceeded max depth in", link.String())
 		return nil
 	}
 
-	response, getErr := service.httpClient.Get(url)
+	response, getErr := service.httpClient.Get(link)
 	if getErr != nil {
 		return getErr
 	}
@@ -59,21 +66,34 @@ func (service *CrawlerService) crawl(url *url.URL, linkCount int, depth int) err
 	}
 
 	document := documents.NewContentDocument()
-	document.Source = url.String()
+	document.Source = link.String()
 	document.Data = strings.Join(parseData.Data, " ")
 
 	service.contentRepository.Save(*document)
 
+	*processedLinks = append(*processedLinks, *link)
 	depth += 1
 
-	for idx, link := range parseData.Links {
-		if idx <= MAX_LINK_COUNT && depth <= MAX_DEPTH {
-			crawlErr := service.crawl(&link, idx, depth)
+	innerLinkCount := 0
+
+	for _, link := range parseData.Links {
+		if innerLinkCount <= MAX_LINK_COUNT &&
+			depth <= MAX_DEPTH &&
+			isLinkUnique(link, processedLinks) {
+			crawlErr := service.crawl(&link, processedLinks, innerLinkCount, depth)
 			if crawlErr != nil {
 				return crawlErr
 			}
+
+			innerLinkCount += 1
 		}
 	}
 
 	return nil
+}
+
+func isLinkUnique(linkToCheck url.URL, links *[]url.URL) bool {
+	return slices.IndexFunc(*links, func(link url.URL) bool {
+		return linkToCheck.String() == link.String()
+	}) == -1
 }

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"web-crawler/modules/helpers"
 	"web-crawler/modules/logger"
 	parserErrors "web-crawler/modules/parser/errors"
 
@@ -67,7 +68,7 @@ func (*ParserService) Parse(reader ParseInputReader) (*ParseData, error) {
 					url, err := url.ParseRequestURI(link)
 
 					if err == nil && url.IsAbs() && url.Scheme == HTTPS_PROTOCOL {
-						output.Links = append(output.Links, *url)
+						output.Links = append(output.Links, *helpers.TransformLink(url))
 					}
 				}
 			}

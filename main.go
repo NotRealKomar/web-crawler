@@ -107,7 +107,6 @@ func getCrawlRoute(service *crawler.CrawlerService) func(w http.ResponseWriter, 
 			return
 		}
 
-		logger.Log("Crawl process finished")
 		w.Write([]byte("Crawl process finished\n"))
 	}
 }
