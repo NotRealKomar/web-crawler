@@ -16,15 +16,15 @@ const MAX_DEPTH = 3
 const MAX_LINK_COUNT = 5
 
 type CrawlerService struct {
-	contentRepository repositories.ContentRepository
-	httpClient        http.HttpClientService
-	parserService     parser.ParserService
+	contentRepository *repositories.ContentRepository
+	httpClient        *http.HttpClientService
+	parserService     *parser.ParserService
 }
 
 func NewCrawlerService(
-	contentRepository repositories.ContentRepository,
-	httpClient http.HttpClientService,
-	parserService parser.ParserService,
+	contentRepository *repositories.ContentRepository,
+	httpClient *http.HttpClientService,
+	parserService *parser.ParserService,
 ) *CrawlerService {
 	return &CrawlerService{
 		contentRepository,

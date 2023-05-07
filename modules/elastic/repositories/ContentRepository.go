@@ -19,6 +19,10 @@ type ContentRepository struct{}
 
 const INDEX_NAME = "content"
 
+func NewContentRepository() *ContentRepository {
+	return &ContentRepository{}
+}
+
 func (repository *ContentRepository) GetMany() ([]documents.ContentDocument, error) {
 	body, marshalErr := json.Marshal(
 		types.QueryObject{
