@@ -15,7 +15,6 @@ import (
 
 const MAX_LINKS_PER_CRAWL = 5
 const MAX_DEPTH_LEVEL = 2
-const LINK_BUFFER_SIZE = 1
 
 type CrawlLink struct {
 	Url   *url.URL
