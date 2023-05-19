@@ -2,18 +2,22 @@ package crawler
 
 import (
 	"net/url"
+	"strconv"
 	"strings"
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/repositories"
 	"web-crawler/modules/http"
-	"web-crawler/modules/logger"
 	"web-crawler/modules/parser"
-
-	"golang.org/x/exp/slices"
 )
 
-const MAX_DEPTH = 3
 const MAX_LINK_COUNT = 5
+const MAX_DEPTH = 4
+const LINK_BUFFER_SIZE = 1
+
+type CrawlLink struct {
+	Url   *url.URL
+	Depth int
+}
 
 type CrawlerService struct {
 	contentRepository *repositories.ContentRepository
@@ -33,67 +37,72 @@ func NewCrawlerService(
 	}
 }
 
-func (service *CrawlerService) InitializeCrawl(link *url.URL) error {
-	processedLinks := []url.URL{}
+func (service *CrawlerService) InitializeCrawl(link *url.URL, messageChannel chan string) {
+	done := make(chan struct{})
 
-	crawlErr := service.crawl(link, &processedLinks, 0, 0)
+	go service.crawl(
+		CrawlLink{
+			Url:   link,
+			Depth: 0,
+		},
+		messageChannel,
+		done,
+	)
 
-	logger.Log("Crawl process finished, processed", len(processedLinks), "links")
-	return crawlErr
+	<-done
 }
 
-func (service *CrawlerService) crawl(link *url.URL, processedLinks *[]url.URL, linkCount int, depth int) error {
-	logger.Log("Start crawling on depth", depth, "in", link.String())
-
-	if depth > MAX_LINK_COUNT {
-		logger.Log("Link count", linkCount, "in depth", depth, "exceeded max link count in", link.String())
-		return nil
+func (service *CrawlerService) crawl(
+	link CrawlLink,
+	messageChannel chan string,
+	statusChannel chan struct{},
+) {
+	if link.Depth > MAX_DEPTH {
+		return
 	}
 
-	if depth > MAX_DEPTH {
-		logger.Log("Depth", depth, "exceeded max depth in", link.String())
-		return nil
-	}
+	messageChannel <- "Start crawling in " + link.Url.String()
 
-	response, getErr := service.httpClient.Get(link)
+	response, getErr := service.httpClient.Get(link.Url)
 	if getErr != nil {
-		return getErr
+		panic(getErr)
 	}
 
 	parseData, parseErr := service.parserService.Parse(*response)
 	if parseErr != nil {
-		return parseErr
+		panic(parseErr)
 	}
 
 	document := documents.NewContentDocument()
-	document.Source = link.String()
+	document.Source = link.Url.String()
 	document.Data = strings.Join(parseData.Data, " ")
 
 	service.contentRepository.Save(*document)
 
-	*processedLinks = append(*processedLinks, *link)
-	depth += 1
+	linksToParse := parseData.Links
 
-	innerLinkCount := 0
+	messageChannel <- "Found " + strconv.Itoa(len(linksToParse)) + " links in " + link.Url.String()
 
-	for _, link := range parseData.Links {
-		if innerLinkCount <= MAX_LINK_COUNT &&
-			depth <= MAX_DEPTH &&
-			isLinkUnique(link, processedLinks) {
-			crawlErr := service.crawl(&link, processedLinks, innerLinkCount, depth)
-			if crawlErr != nil {
-				return crawlErr
-			}
+	if len(linksToParse) == 0 {
+		messageChannel <- "Terminating crawl process in " + link.Url.String()
 
-			innerLinkCount += 1
-		}
+		return
 	}
 
-	return nil
-}
+	if len(linksToParse) > MAX_LINK_COUNT {
+		linksToParse = linksToParse[0:MAX_LINK_COUNT]
+	}
 
-func isLinkUnique(linkToCheck url.URL, links *[]url.URL) bool {
-	return slices.IndexFunc(*links, func(link url.URL) bool {
-		return linkToCheck.String() == link.String()
-	}) == -1
+	for _, crawlLink := range linksToParse {
+		go service.crawl(
+			CrawlLink{
+				Url:   &crawlLink,
+				Depth: link.Depth + 1,
+			},
+			messageChannel,
+			statusChannel,
+		)
+	}
+
+	statusChannel <- struct{}{}
 }

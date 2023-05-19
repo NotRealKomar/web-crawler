@@ -28,3 +28,9 @@ func Fatal(values ...any) {
 
 	logger.Fatal(values...)
 }
+
+func LogChannel(messageChannel chan string) {
+	for value := range messageChannel {
+		logger.Println(value)
+	}
+}

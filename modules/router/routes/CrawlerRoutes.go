@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"web-crawler/modules/DI"
 	"web-crawler/modules/crawler"
+	"web-crawler/modules/logger"
+	"web-crawler/modules/types"
 )
 
-func GetCrawlRoute() func(w http.ResponseWriter, r *http.Request) {
+func GetCrawlRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		crawler := crawler.CrawlerService{}
 		DI.Inject(&crawler)
@@ -39,12 +41,17 @@ func GetCrawlRoute() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		crawlErr := crawler.InitializeCrawl(crawlUrl)
-		if crawlErr != nil {
-			w.Write([]byte(crawlErr.Error()))
-			return
-		}
+		messageChannel := make(chan string)
 
-		w.Write([]byte("Crawl process finished\n"))
+		go crawler.InitializeCrawl(crawlUrl, messageChannel)
+		go logger.LogChannel(messageChannel)
+
+		w.Write([]byte("Crawl process started\n"))
+	}
+}
+
+func GetCheckCrawlRoute() types.RouteHandler {
+	return func(w http.ResponseWriter, r *http.Request) {
+
 	}
 }
