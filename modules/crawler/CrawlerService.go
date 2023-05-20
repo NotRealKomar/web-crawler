@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/repositories"
 	"web-crawler/modules/http"
@@ -15,6 +16,7 @@ import (
 
 const MAX_LINKS_PER_CRAWL = 5
 const MAX_DEPTH_LEVEL = 2
+const DONE_SIGNAL_TIMEOUT = 2 //in seconds
 
 type CrawlLink struct {
 	Url   *url.URL
@@ -41,7 +43,7 @@ func NewCrawlerService(
 
 func (service *CrawlerService) InitializeCrawl(link *url.URL, messageChannel chan string) {
 	done := make(chan struct{})
-	maxLinkCount := int(math.Pow(MAX_LINKS_PER_CRAWL, MAX_DEPTH_LEVEL+1))
+	maxLinkCount := calculateMaxLinkCount(MAX_LINKS_PER_CRAWL, MAX_DEPTH_LEVEL)
 	processedLinks := &[]url.URL{}
 
 	linkCounter := 0
@@ -60,7 +62,9 @@ func (service *CrawlerService) InitializeCrawl(link *url.URL, messageChannel cha
 
 	<-done
 
-	messageChannel <- "Crawl process is done"
+	time.Sleep(time.Second * DONE_SIGNAL_TIMEOUT)
+
+	messageChannel <- "Crawl process is finished, processed " + strconv.Itoa(len(*processedLinks)) + " links out of " + strconv.Itoa(maxLinkCount)
 }
 
 func (service *CrawlerService) crawl(
@@ -93,10 +97,9 @@ func (service *CrawlerService) crawl(
 
 	service.contentRepository.Save(*document)
 
-	*linkCount += 1
-	*processedLinks = append(*processedLinks, *link.Url)
-
 	linksToParse := []url.URL{}
+
+	*processedLinks = append(*processedLinks, *link.Url)
 
 	for _, link := range parseData.Links {
 		if slices.IndexFunc(*processedLinks, func(processedLink url.URL) bool {
@@ -108,6 +111,7 @@ func (service *CrawlerService) crawl(
 
 	if len(linksToParse) == 0 {
 		messageChannel <- "Terminating crawl process in " + link.Url.String()
+		statusChannel <- struct{}{} // stop the crawl process entirely if didn't get any links
 
 		return
 	}
@@ -117,6 +121,13 @@ func (service *CrawlerService) crawl(
 	}
 
 	messageChannel <- "Found " + strconv.Itoa(len(linksToParse)) + " links in " + link.Url.String()
+
+	*linkCount += 1
+	if *linkCount >= *maxLinkCount {
+		statusChannel <- struct{}{}
+
+		return
+	}
 
 	for _, crawlLink := range linksToParse {
 		go func(crawlLink url.URL) {
@@ -134,7 +145,15 @@ func (service *CrawlerService) crawl(
 		}(crawlLink)
 	}
 
-	if *linkCount > *maxLinkCount {
-		statusChannel <- struct{}{}
+	messageChannel <- "Finish crawling in " + link.Url.String()
+}
+
+func calculateMaxLinkCount(linksPerLevel int, maxDepth int) int {
+	var maxCount float64
+
+	for i := 0; i <= maxDepth; i++ {
+		maxCount += math.Pow(float64(linksPerLevel), float64(i))
 	}
+
+	return int(maxCount)
 }
