@@ -126,12 +126,12 @@ func (service *CrawlerService) crawl(
 	*processedLinks = append(*processedLinks, *link.Url)
 
 	for _, link := range parseData.Links {
-		if slices.IndexFunc(*processedLinks, func(processedLink url.URL) bool {
-			return processedLink.String() == link.String()
-		}) == -1 {
+		if getIsLinkIsUnique(processedLinks, &link) {
 			linksToParse = append(linksToParse, link)
 		}
 	}
+
+	service.loggerService.GetChannel() <- "Found " + strconv.Itoa(len(linksToParse)) + " unique links in " + link.Url.String()
 
 	if len(linksToParse) == 0 {
 		service.loggerService.GetChannel() <- "Terminating crawl process in " + link.Url.String()
@@ -143,8 +143,6 @@ func (service *CrawlerService) crawl(
 	if len(linksToParse) > MAX_LINKS_PER_CRAWL {
 		linksToParse = linksToParse[0:MAX_LINKS_PER_CRAWL]
 	}
-
-	service.loggerService.GetChannel() <- "Found " + strconv.Itoa(len(linksToParse)) + " links in " + link.Url.String()
 
 	*linkCount += 1
 	if *linkCount >= *maxLinkCount {
@@ -169,6 +167,12 @@ func (service *CrawlerService) crawl(
 	}
 
 	service.loggerService.GetChannel() <- "Finish crawling in " + link.Url.String()
+}
+
+func getIsLinkIsUnique(linkSlice *[]url.URL, link *url.URL) bool {
+	return slices.IndexFunc(*linkSlice, func(processedLink url.URL) bool {
+		return processedLink.String() == link.String()
+	}) == -1
 }
 
 func calculateMaxLinkCount(linksPerLevel int, maxDepth int) int {
