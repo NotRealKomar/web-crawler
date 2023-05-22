@@ -10,7 +10,7 @@ import (
 	"web-crawler/modules/types"
 )
 
-func GetSearchRoute() func(http.ResponseWriter, *http.Request) {
+func GetSearchRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		service := services.ContentSearchService{}
 		DI.Inject(&service)
@@ -53,7 +53,7 @@ func GetSearchRoute() func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func GetItemsRoute() func(http.ResponseWriter, *http.Request) {
+func GetItemsRoute() types.RouteHandler {
 	repository := repositories.ContentRepository{}
 	DI.Inject(&repository)
 

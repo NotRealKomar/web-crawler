@@ -6,19 +6,19 @@ import (
 	"web-crawler/modules/types"
 )
 
-func GetHealthcheckRoute() types.GetRouteOutput {
+func GetHealthcheckRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	}
 }
 
-func GetNotFoundRoute() types.GetRouteOutput {
+func GetNotFoundRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("404 NOT FOUND"))
 	}
 }
 
-func GetStatusRoute() types.GetRouteOutput {
+func GetStatusRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		response, statusErr := client.Status()
 		if statusErr != nil {

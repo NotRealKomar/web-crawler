@@ -25,13 +25,18 @@ func main() {
 
 	router := router.GetRouter()
 
-	logger.Log("Run the server on http://localhost:3000/")
+	loggerService := logger.LoggerService{}
+	DI.Inject(&loggerService)
 
+	go loggerService.EnableLogging()
+
+	logger.Log("Run the server on http://localhost:3000/")
 	http.ListenAndServe(":3000", logger.NewLogMiddleware(router))
 }
 
 func registerDependencies() {
-	repository := repositories.NewContentRepository()
+	logger := logger.NewLoggerService()
+	repository := repositories.NewContentRepository(logger)
 
 	DI.Register(repository)
 	DI.Register(
@@ -44,6 +49,10 @@ func registerDependencies() {
 			repository,
 			&httpModule.HttpClientService{},
 			&parser.ParserService{},
+			logger,
 		),
+	)
+	DI.Register(
+		logger,
 	)
 }

@@ -15,12 +15,14 @@ import (
 	generalTypes "web-crawler/modules/types"
 )
 
-type ContentRepository struct{}
+type ContentRepository struct {
+	loggerService *logger.LoggerService
+}
 
 const INDEX_NAME = "content"
 
-func NewContentRepository() *ContentRepository {
-	return &ContentRepository{}
+func NewContentRepository(loggerService *logger.LoggerService) *ContentRepository {
+	return &ContentRepository{loggerService}
 }
 
 func (repository *ContentRepository) GetMany() ([]documents.ContentDocument, error) {
@@ -62,14 +64,14 @@ func (repository *ContentRepository) GetManyByKeyword(
 	return repository.getManyByQuery(body)
 }
 
-func (*ContentRepository) Save(document documents.ContentDocument) (*documents.ContentDocument, error) {
+func (repository *ContentRepository) Save(document documents.ContentDocument) {
 	client, _ := client.GetClient()
 	create := client.Create
 	responseData := &types.CreateResponse{}
 
 	body, marshalErr := json.Marshal(document)
 	if marshalErr != nil {
-		return nil, marshalErr
+		panic(marshalErr)
 	}
 
 	response, clientErr := create(
@@ -80,25 +82,23 @@ func (*ContentRepository) Save(document documents.ContentDocument) (*documents.C
 		create.WithPretty(),
 	)
 	if clientErr != nil {
-		return nil, clientErr
+		panic(clientErr)
 	}
 
 	if response.IsError() {
 		logger.Log(*response)
 
-		return nil, errors.New(repositoryErrors.CreateFailedException)
+		panic(repositoryErrors.CreateFailedException)
 	}
 
 	decodeErr := helpers.DecodeResponseBody(responseData, response.Body)
 	if decodeErr != nil {
-		return nil, decodeErr
+		panic(decodeErr)
 	}
 
 	if responseData.Result == "updated" {
-		logger.Log("unexpected result for 'create' request with id", responseData.Id)
+		repository.loggerService.GetChannel() <- "unexpected result for 'create' request with id" + responseData.Id
 	}
-
-	return &document, nil
 }
 
 func (*ContentRepository) getManyByQuery(query []byte) ([]documents.ContentDocument, error) {

@@ -8,9 +8,10 @@ import (
 	"net/url"
 	"web-crawler/modules/DI"
 	"web-crawler/modules/crawler"
+	"web-crawler/modules/types"
 )
 
-func GetCrawlRoute() func(w http.ResponseWriter, r *http.Request) {
+func GetCrawlRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		crawler := crawler.CrawlerService{}
 		DI.Inject(&crawler)
@@ -39,12 +40,30 @@ func GetCrawlRoute() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		crawlErr := crawler.InitializeCrawl(crawlUrl)
-		if crawlErr != nil {
-			w.Write([]byte(crawlErr.Error()))
+		processIdChannel := make(chan string)
+		go crawler.InitializeCrawl(crawlUrl, processIdChannel)
+
+		processId := <-processIdChannel
+
+		w.Write([]byte("Crawl process started.\nJob Id:\n" + processId + "\n\n"))
+	}
+}
+
+func GetCheckCrawlRoute() types.RouteHandler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		crawler := crawler.CrawlerService{}
+		DI.Inject(&crawler)
+
+		query := r.URL.Query()
+
+		jobId := query.Get("id")
+		if jobId == "" {
+			w.Write([]byte("Id cannot be empty\n"))
 			return
 		}
 
-		w.Write([]byte("Crawl process finished\n"))
+		status := crawler.GetCrawlStatus(jobId)
+
+		w.Write([]byte("Job #" + jobId + " - \"" + string(status) + "\"\n"))
 	}
 }
