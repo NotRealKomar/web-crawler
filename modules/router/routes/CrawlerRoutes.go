@@ -40,14 +40,30 @@ func GetCrawlRoute() types.RouteHandler {
 			return
 		}
 
-		go crawler.InitializeCrawl(crawlUrl)
+		processIdChannel := make(chan string)
+		go crawler.InitializeCrawl(crawlUrl, processIdChannel)
 
-		w.Write([]byte("Crawl process started\n"))
+		processId := <-processIdChannel
+
+		w.Write([]byte("Crawl process started.\nJob Id:\n" + processId + "\n\n"))
 	}
 }
 
 func GetCheckCrawlRoute() types.RouteHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
+		crawler := crawler.CrawlerService{}
+		DI.Inject(&crawler)
 
+		query := r.URL.Query()
+
+		jobId := query.Get("id")
+		if jobId == "" {
+			w.Write([]byte("Id cannot be empty\n"))
+			return
+		}
+
+		status := crawler.GetCrawlStatus(jobId)
+
+		w.Write([]byte("Job #" + jobId + " - \"" + string(status) + "\"\n"))
 	}
 }

@@ -18,7 +18,7 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/content/search", routes.GetSearchRoute()).Methods(http.MethodGet)
 
 	router.HandleFunc("/crawler/push", routes.GetCrawlRoute()).Methods(http.MethodPost)
-	// router.HandleFunc("/crawler/check").Methods(http.MethodGet)
+	router.HandleFunc("/crawler/check", routes.GetCheckCrawlRoute()).Methods(http.MethodGet)
 
 	return router
 }
