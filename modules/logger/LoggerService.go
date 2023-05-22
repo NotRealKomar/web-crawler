@@ -14,7 +14,7 @@ func (service *LoggerService) EnableLogging() {
 	defer close(service.logChannel)
 
 	for value := range service.logChannel {
-		logger.Println(value)
+		Log(value)
 	}
 }
 
