@@ -26,7 +26,7 @@ func Inject[T any](output *T) {
 	dependency := dependencies[key]
 
 	if dependency != nil && reflect.ValueOf(dependency).Type().AssignableTo(key) {
-		*output, _ = dependency.(T)
+		*output = *dependency.(*T)
 		return
 	}
 

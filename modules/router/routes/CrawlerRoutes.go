@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"web-crawler/modules/DI"
 	"web-crawler/modules/crawler"
-	"web-crawler/modules/logger"
 	"web-crawler/modules/types"
 )
 
@@ -41,10 +40,7 @@ func GetCrawlRoute() types.RouteHandler {
 			return
 		}
 
-		messageChannel := make(chan string)
-
-		go crawler.InitializeCrawl(crawlUrl, messageChannel)
-		go logger.LogChannel(messageChannel)
+		go crawler.InitializeCrawl(crawlUrl)
 
 		w.Write([]byte("Crawl process started\n"))
 	}

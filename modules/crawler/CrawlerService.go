@@ -9,6 +9,7 @@ import (
 	"web-crawler/modules/documents"
 	"web-crawler/modules/elastic/repositories"
 	"web-crawler/modules/http"
+	"web-crawler/modules/logger"
 	"web-crawler/modules/parser"
 
 	"golang.org/x/exp/slices"
@@ -27,21 +28,24 @@ type CrawlerService struct {
 	contentRepository *repositories.ContentRepository
 	httpClient        *http.HttpClientService
 	parserService     *parser.ParserService
+	loggerService     *logger.LoggerService
 }
 
 func NewCrawlerService(
 	contentRepository *repositories.ContentRepository,
 	httpClient *http.HttpClientService,
 	parserService *parser.ParserService,
+	loggerService *logger.LoggerService,
 ) *CrawlerService {
 	return &CrawlerService{
 		contentRepository,
 		httpClient,
 		parserService,
+		loggerService,
 	}
 }
 
-func (service *CrawlerService) InitializeCrawl(link *url.URL, messageChannel chan string) {
+func (service *CrawlerService) InitializeCrawl(link *url.URL) {
 	done := make(chan struct{})
 	maxLinkCount := calculateMaxLinkCount(MAX_LINKS_PER_CRAWL, MAX_DEPTH_LEVEL)
 	processedLinks := &[]url.URL{}
@@ -53,7 +57,6 @@ func (service *CrawlerService) InitializeCrawl(link *url.URL, messageChannel cha
 			Url:   link,
 			Depth: 0,
 		},
-		messageChannel,
 		&linkCounter,
 		&maxLinkCount,
 		processedLinks,
@@ -64,12 +67,11 @@ func (service *CrawlerService) InitializeCrawl(link *url.URL, messageChannel cha
 
 	time.Sleep(time.Second * DONE_SIGNAL_TIMEOUT)
 
-	messageChannel <- "Crawl process is finished, processed " + strconv.Itoa(len(*processedLinks)) + " links out of " + strconv.Itoa(maxLinkCount)
+	service.loggerService.GetChannel() <- "Crawl process is finished, processed " + strconv.Itoa(len(*processedLinks)) + " links out of " + strconv.Itoa(maxLinkCount)
 }
 
 func (service *CrawlerService) crawl(
 	link CrawlLink,
-	messageChannel chan string,
 	linkCount *int,
 	maxLinkCount *int,
 	processedLinks *[]url.URL,
@@ -79,7 +81,7 @@ func (service *CrawlerService) crawl(
 		return
 	}
 
-	messageChannel <- "Start crawling in " + link.Url.String()
+	service.loggerService.GetChannel() <- "Start crawling in " + link.Url.String()
 
 	response, getErr := service.httpClient.Get(link.Url)
 	if getErr != nil {
@@ -110,7 +112,7 @@ func (service *CrawlerService) crawl(
 	}
 
 	if len(linksToParse) == 0 {
-		messageChannel <- "Terminating crawl process in " + link.Url.String()
+		service.loggerService.GetChannel() <- "Terminating crawl process in " + link.Url.String()
 		statusChannel <- struct{}{} // stop the crawl process entirely if didn't get any links
 
 		return
@@ -120,7 +122,7 @@ func (service *CrawlerService) crawl(
 		linksToParse = linksToParse[0:MAX_LINKS_PER_CRAWL]
 	}
 
-	messageChannel <- "Found " + strconv.Itoa(len(linksToParse)) + " links in " + link.Url.String()
+	service.loggerService.GetChannel() <- "Found " + strconv.Itoa(len(linksToParse)) + " links in " + link.Url.String()
 
 	*linkCount += 1
 	if *linkCount >= *maxLinkCount {
@@ -136,7 +138,6 @@ func (service *CrawlerService) crawl(
 					Url:   &crawlLink,
 					Depth: link.Depth + 1,
 				},
-				messageChannel,
 				linkCount,
 				maxLinkCount,
 				processedLinks,
@@ -145,11 +146,11 @@ func (service *CrawlerService) crawl(
 		}(crawlLink)
 	}
 
-	messageChannel <- "Finish crawling in " + link.Url.String()
+	service.loggerService.GetChannel() <- "Finish crawling in " + link.Url.String()
 }
 
 func calculateMaxLinkCount(linksPerLevel int, maxDepth int) int {
-	var maxCount float64
+	maxCount := 0.0
 
 	for i := 0; i <= maxDepth; i++ {
 		maxCount += math.Pow(float64(linksPerLevel), float64(i))
