@@ -119,7 +119,7 @@ func (service *CrawlerService) crawl(
 	document.Source = link.Url.String()
 	document.Data = strings.Join(parseData.Data, " ")
 
-	service.contentRepository.Save(*document)
+	go service.contentRepository.Save(*document)
 
 	linksToParse := []url.URL{}
 
