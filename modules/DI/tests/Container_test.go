@@ -1,3 +1,4 @@
+// TODO: add negative test cases
 package DI_test
 
 import (
@@ -16,7 +17,7 @@ type MockService struct {
 
 var mockService *MockService
 
-func beforeTest(t *testing.T) {
+func beforeTest() {
 	mockService = &MockService{
 		Dependency: &MockDependency{
 			Name: "Dependency1",
@@ -28,7 +29,7 @@ func beforeTest(t *testing.T) {
 }
 
 func TestRegisterInjectShouldWork(t *testing.T) {
-	beforeTest(t)
+	beforeTest()
 
 	DI.Register(mockService, nil)
 

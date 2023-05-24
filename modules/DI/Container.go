@@ -39,3 +39,7 @@ func Inject[T any](output *T) {
 
 	loggerService.Fatal("Cannot get dependency with key: ", key)
 }
+
+func ClearDependencies() {
+	dependencies = nil
+}
