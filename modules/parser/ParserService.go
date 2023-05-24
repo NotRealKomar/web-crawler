@@ -33,9 +33,17 @@ type ParseData struct {
 }
 
 type ParseInputReader io.ReadCloser
-type ParserService struct{}
+type ParserService struct {
+	logger *logger.LoggerService
+}
 
-func (*ParserService) Parse(reader ParseInputReader) (*ParseData, error) {
+func NewParserService(logger *logger.LoggerService) *ParserService {
+	return &ParserService{
+		logger,
+	}
+}
+
+func (service *ParserService) Parse(reader ParseInputReader) (*ParseData, error) {
 	output := &ParseData{}
 
 	tokenizer := html.NewTokenizer(reader)
@@ -49,7 +57,7 @@ func (*ParserService) Parse(reader ParseInputReader) (*ParseData, error) {
 				break
 			}
 
-			logger.Log(parserErrors.ErrorTokenException, tokenType)
+			service.logger.Log(parserErrors.ErrorTokenException, tokenType)
 
 			return nil, errors.New(parserErrors.ErrorTokenException)
 		}

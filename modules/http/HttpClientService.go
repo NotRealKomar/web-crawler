@@ -7,13 +7,21 @@ import (
 	"web-crawler/modules/logger"
 )
 
-type HttpClientService struct{}
+type HttpClientService struct {
+	logger *logger.LoggerService
+}
 
-func (*HttpClientService) Get(url *url.URL) (*io.ReadCloser, error) {
+func NewHttpClientService(logger *logger.LoggerService) *HttpClientService {
+	return &HttpClientService{
+		logger,
+	}
+}
+
+func (client *HttpClientService) Get(url *url.URL) (*io.ReadCloser, error) {
 	response, getErr := http.Get(url.String())
 
 	if getErr != nil {
-		logger.Log(getErr)
+		client.logger.Log(getErr)
 
 		return nil, getErr
 	}

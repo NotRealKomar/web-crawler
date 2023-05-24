@@ -6,22 +6,29 @@ import (
 )
 
 var dependencies map[reflect.Type]any
+var loggerService *logger.LoggerService = logger.NewLoggerService()
 
-func Register[T any](value T) {
+func Register[T any](value T, key reflect.Type) {
 	if dependencies == nil {
 		dependencies = make(map[reflect.Type]any)
 	}
 
-	key := reflect.TypeOf(value)
+	if key == nil {
+		key = reflect.TypeOf(value)
+	}
 
 	if key.Kind() != reflect.Pointer {
-		logger.Fatal("Cannot register dependency \"", key, "\": must be a pointer type")
+		loggerService.Fatal("Cannot register dependency \"", key, "\": must be a pointer type")
 	}
 
 	dependencies[key] = value
 }
 
 func Inject[T any](output *T) {
+	if dependencies == nil {
+		loggerService.Fatal("Container has no dependencies")
+	}
+
 	key := reflect.TypeOf(output)
 	dependency := dependencies[key]
 
@@ -30,5 +37,5 @@ func Inject[T any](output *T) {
 		return
 	}
 
-	logger.Fatal("Cannot get dependency with key: ", key)
+	loggerService.Fatal("Cannot get dependency with key: ", key)
 }

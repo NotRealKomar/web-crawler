@@ -16,7 +16,7 @@ import (
 )
 
 type ContentRepository struct {
-	loggerService *logger.LoggerService
+	logger *logger.LoggerService
 }
 
 const INDEX_NAME = "content"
@@ -86,7 +86,7 @@ func (repository *ContentRepository) Save(document documents.ContentDocument) {
 	}
 
 	if response.IsError() {
-		logger.Log(*response)
+		repository.logger.Log(*response)
 
 		panic(repositoryErrors.CreateFailedException)
 	}
@@ -97,11 +97,11 @@ func (repository *ContentRepository) Save(document documents.ContentDocument) {
 	}
 
 	if responseData.Result == "updated" {
-		repository.loggerService.GetChannel() <- "unexpected result for 'create' request with id" + responseData.Id
+		repository.logger.GetChannel() <- "unexpected result for 'create' request with id" + responseData.Id
 	}
 }
 
-func (*ContentRepository) getManyByQuery(query []byte) ([]documents.ContentDocument, error) {
+func (repository *ContentRepository) getManyByQuery(query []byte) ([]documents.ContentDocument, error) {
 	client, _ := client.GetClient()
 	search := client.Search
 	responseData := &types.SearchResponse[documents.ContentDocument]{}
@@ -119,7 +119,7 @@ func (*ContentRepository) getManyByQuery(query []byte) ([]documents.ContentDocum
 	}
 
 	if response.IsError() {
-		logger.Log(response)
+		repository.logger.Log(response)
 
 		return nil, errors.New(repositoryErrors.SearchFailedException)
 	}
