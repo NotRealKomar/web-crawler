@@ -7,7 +7,13 @@ import (
 	"web-crawler/modules/elastic/client"
 )
 
-type ContentIndexer struct{}
+type ContentIndexerBase interface {
+	IndexFromDocument(document documents.ContentDocument) (*documents.ContentDocument, error)
+}
+
+type ContentIndexer struct {
+	ContentIndexerBase
+}
 
 func (*ContentIndexer) IndexFromDocument(document documents.ContentDocument) (*documents.ContentDocument, error) {
 	client, getClientErr := client.GetClient()

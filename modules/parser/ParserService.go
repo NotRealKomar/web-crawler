@@ -33,13 +33,19 @@ type ParseData struct {
 }
 
 type ParseInputReader io.ReadCloser
-type ParserService struct {
-	logger *logger.LoggerService
+
+type ParserServiceBase interface {
+	Parse(reader ParseInputReader) (*ParseData, error)
 }
 
-func NewParserService(logger *logger.LoggerService) *ParserService {
+type ParserService struct {
+	ParserServiceBase
+	logger logger.LoggerServiceBase
+}
+
+func NewParserService(logger logger.LoggerServiceBase) *ParserService {
 	return &ParserService{
-		logger,
+		logger: logger,
 	}
 }
 

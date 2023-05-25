@@ -15,14 +15,23 @@ import (
 	generalTypes "web-crawler/modules/types"
 )
 
+type ContentRepositoryBase interface {
+	GetMany() ([]documents.ContentDocument, error)
+	GetManyByKeyword(search string, pagination *generalTypes.PaginationOptions) ([]documents.ContentDocument, error)
+	Save(document documents.ContentDocument)
+}
+
 type ContentRepository struct {
+	ContentRepositoryBase
 	logger *logger.LoggerService
 }
 
 const INDEX_NAME = "content"
 
 func NewContentRepository(loggerService *logger.LoggerService) *ContentRepository {
-	return &ContentRepository{loggerService}
+	return &ContentRepository{
+		logger: loggerService,
+	}
 }
 
 func (repository *ContentRepository) GetMany() ([]documents.ContentDocument, error) {

@@ -3,15 +3,23 @@ package logger
 import (
 	"log"
 	"os"
+	"testing"
 )
 
-type MockLoggerService LoggerService
+type MockLoggerService struct {
+	LoggerService
+	*testing.T
+}
 
 const MOCK_LOG_PREFIX = "[MOCK]: "
 
-func NewMockLoggerService() *MockLoggerService {
+func NewMockLoggerService(t *testing.T) *MockLoggerService {
 	return &MockLoggerService{
-		logger: log.New(os.Stdout, LOG_PREFIX, log.Flags()),
+		LoggerService{
+			logChannel: make(chan string),
+			logger:     log.New(os.Stdout, MOCK_LOG_PREFIX, log.Flags()),
+		},
+		t,
 	}
 }
 
@@ -24,5 +32,9 @@ func (service *MockLoggerService) Fatal(values ...any) {
 }
 
 func (service *MockLoggerService) EnableChannelLogging() {
-	// Do nothing
+	defer close(service.logChannel)
+
+	for value := range service.logChannel {
+		service.T.Log(value)
+	}
 }

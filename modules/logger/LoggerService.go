@@ -7,7 +7,15 @@ import (
 
 const LOG_PREFIX = "[CRAWLER]: "
 
+type LoggerServiceBase interface {
+	EnableChannelLogging()
+	GetChannel() chan string
+	Log(values ...any)
+	Fatal(values ...any)
+}
+
 type LoggerService struct {
+	LoggerServiceBase
 	logChannel chan string
 	logger     *log.Logger
 }
@@ -17,8 +25,8 @@ func NewLoggerService() *LoggerService {
 	logger := log.New(os.Stdout, LOG_PREFIX, log.Flags())
 
 	return &LoggerService{
-		logChannel,
-		logger,
+		logChannel: logChannel,
+		logger:     logger,
 	}
 }
 

@@ -23,9 +23,9 @@ const (
 type CrawlJob map[string]CrawlStatus
 
 type CrawlerService struct {
-	contentRepository *repositories.ContentRepository
-	httpClient        *http.HttpClientService
-	parserService     *parser.ParserService
-	loggerService     *logger.LoggerService
+	contentRepository repositories.ContentRepositoryBase
+	httpClient        http.HttpClientServiceBase
+	parserService     parser.ParserServiceBase
+	loggerService     logger.LoggerServiceBase
 	jobList           CrawlJob
 }

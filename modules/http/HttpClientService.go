@@ -7,18 +7,23 @@ import (
 	"web-crawler/modules/logger"
 )
 
+type HttpClientServiceBase interface {
+	Get(url *url.URL) (*io.ReadCloser, error)
+}
+
 type HttpClientService struct {
-	logger *logger.LoggerService
+	HttpClientServiceBase
+	logger logger.LoggerServiceBase
 	client *http.Client
 }
 
 func NewHttpClientService(
-	logger *logger.LoggerService,
+	logger logger.LoggerServiceBase,
 	client *http.Client,
 ) *HttpClientService {
 	return &HttpClientService{
-		logger,
-		client,
+		logger: logger,
+		client: client,
 	}
 }
 
