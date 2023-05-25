@@ -16,32 +16,6 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const MAX_LINKS_PER_CRAWL = 5
-const MAX_DEPTH_LEVEL = 2
-const DONE_SIGNAL_TIMEOUT = 2 //in seconds
-
-type CrawlLink struct {
-	Url   *url.URL
-	Depth int
-}
-
-type CrawlStatus string
-
-const (
-	IN_PROGRESS CrawlStatus = "in_progress"
-	DONE        CrawlStatus = "done"
-)
-
-type CrawlProcesses map[string]CrawlStatus
-
-type CrawlerService struct {
-	contentRepository *repositories.ContentRepository
-	httpClient        *http.HttpClientService
-	parserService     *parser.ParserService
-	loggerService     *logger.LoggerService
-	processList       CrawlProcesses
-}
-
 func NewCrawlerService(
 	contentRepository *repositories.ContentRepository,
 	httpClient *http.HttpClientService,
@@ -53,12 +27,12 @@ func NewCrawlerService(
 		httpClient,
 		parserService,
 		loggerService,
-		make(CrawlProcesses),
+		make(CrawlJob),
 	}
 }
 
-func (service *CrawlerService) GetCrawlStatus(processId string) CrawlStatus {
-	return service.processList[processId]
+func (service *CrawlerService) GetJobStatus(jobId string) CrawlStatus {
+	return service.jobList[jobId]
 }
 
 func (service *CrawlerService) InitializeCrawl(link *url.URL, processIdChannel chan string) {
@@ -67,7 +41,7 @@ func (service *CrawlerService) InitializeCrawl(link *url.URL, processIdChannel c
 	processedLinks := &[]url.URL{}
 
 	processId := uuid.NewString()
-	service.processList[processId] = IN_PROGRESS
+	service.jobList[processId] = IN_PROGRESS
 
 	processIdChannel <- processId
 
@@ -89,7 +63,7 @@ func (service *CrawlerService) InitializeCrawl(link *url.URL, processIdChannel c
 	time.Sleep(time.Second * DONE_SIGNAL_TIMEOUT)
 
 	service.loggerService.GetChannel() <- "Crawl process is finished, processed " + strconv.Itoa(len(*processedLinks)) + " links out of " + strconv.Itoa(maxLinkCount)
-	service.processList[processId] = DONE
+	service.jobList[processId] = DONE
 }
 
 func (service *CrawlerService) crawl(

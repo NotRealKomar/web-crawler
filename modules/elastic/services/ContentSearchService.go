@@ -10,11 +10,11 @@ import (
 const RESPONSE_DATA_OFFSET = 10
 
 type ContentSearchService struct {
-	repository repositories.ContentRepository
+	repository *repositories.ContentRepository
 }
 
 func NewContentSearchService(
-	repository repositories.ContentRepository,
+	repository *repositories.ContentRepository,
 ) *ContentSearchService {
 	return &ContentSearchService{
 		repository,

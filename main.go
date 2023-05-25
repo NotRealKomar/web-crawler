@@ -38,22 +38,26 @@ func main() {
 func registerDependencies() {
 	logger := logger.NewLoggerService()
 	repository := repositories.NewContentRepository(logger)
-
-	DI.Register(
+	httpClient := httpModule.NewHttpClientService(
 		logger,
+		http.DefaultClient,
+	)
+
+	DI.Register(logger, nil)
+	DI.Register(repository, nil)
+	DI.Register(httpClient, nil)
+	DI.Register(
+		parser.NewParserService(logger),
 		nil,
 	)
-	DI.Register(repository, nil)
 	DI.Register(
-		services.NewContentSearchService(
-			*repository,
-		),
+		services.NewContentSearchService(repository),
 		nil,
 	)
 	DI.Register(
 		crawler.NewCrawlerService(
 			repository,
-			&httpModule.HttpClientService{},
+			httpClient,
 			&parser.ParserService{},
 			logger,
 		),

@@ -9,16 +9,21 @@ import (
 
 type HttpClientService struct {
 	logger *logger.LoggerService
+	client *http.Client
 }
 
-func NewHttpClientService(logger *logger.LoggerService) *HttpClientService {
+func NewHttpClientService(
+	logger *logger.LoggerService,
+	client *http.Client,
+) *HttpClientService {
 	return &HttpClientService{
 		logger,
+		client,
 	}
 }
 
 func (client *HttpClientService) Get(url *url.URL) (*io.ReadCloser, error) {
-	response, getErr := http.Get(url.String())
+	response, getErr := client.client.Get(url.String())
 
 	if getErr != nil {
 		client.logger.Log(getErr)

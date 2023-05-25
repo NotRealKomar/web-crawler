@@ -62,7 +62,7 @@ func GetCheckCrawlRoute() types.RouteHandler {
 			return
 		}
 
-		status := crawler.GetCrawlStatus(jobId)
+		status := crawler.GetJobStatus(jobId)
 
 		w.Write([]byte("Job #" + jobId + " - \"" + string(status) + "\"\n"))
 	}
