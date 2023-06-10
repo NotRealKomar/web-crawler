@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"web-crawler/modules/DI"
 	"web-crawler/modules/crawler"
 	"web-crawler/modules/elastic/repositories"
@@ -18,7 +19,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		logger.Fatal(err)
+		log.Fatal(err)
 	}
 
 	registerDependencies()
@@ -28,31 +29,38 @@ func main() {
 	loggerService := logger.LoggerService{}
 	DI.Inject(&loggerService)
 
-	go loggerService.EnableLogging()
+	go loggerService.EnableChannelLogging()
 
-	logger.Log("Run the server on http://localhost:3000/")
-	http.ListenAndServe(":3000", logger.NewLogMiddleware(router))
+	loggerService.Log("Run the server on http://localhost:3000/")
+	http.ListenAndServe(":3000", logger.NewLogMiddleware(router, &loggerService))
 }
 
 func registerDependencies() {
 	logger := logger.NewLoggerService()
 	repository := repositories.NewContentRepository(logger)
+	httpClient := httpModule.NewHttpClientService(
+		logger,
+		http.DefaultClient,
+	)
 
-	DI.Register(repository)
+	DI.Register(logger, nil)
+	DI.Register(repository, nil)
+	DI.Register(httpClient, nil)
 	DI.Register(
-		services.NewContentSearchService(
-			*repository,
-		),
+		parser.NewParserService(logger),
+		nil,
+	)
+	DI.Register(
+		services.NewContentSearchService(repository),
+		nil,
 	)
 	DI.Register(
 		crawler.NewCrawlerService(
 			repository,
-			&httpModule.HttpClientService{},
+			httpClient,
 			&parser.ParserService{},
 			logger,
 		),
-	)
-	DI.Register(
-		logger,
+		nil,
 	)
 }
